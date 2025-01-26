@@ -83,7 +83,8 @@ variables:
   heater: !input heater
   temperature_sensor: !input temperature_sensor
   valve: !input valve
-  desired_temperature: "{{ states(!input desired_temperature_entity) | float(20) }}"
+  desired_temperature_entity: !input desired_temperature_entity
+  desired_temperature: "{{ states(variables.desired_temperature_entity) | float(20) }}"
   valve_off_temperature: !input valve_off_temperature
 
 action:
