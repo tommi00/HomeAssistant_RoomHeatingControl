@@ -1,62 +1,59 @@
 blueprint:
-  name: Controllo riscaldamento stanza
-  description: Controlla il riscaldamento in una stanza (OFF, ELETTRICO, GAS, ELETTRICO+GAS).
+  name: Room Heating Control
+  description: Manage room heating with multiple modes (OFF, ELECTRIC, GAS, ELECTRIC+GAS) using smart devices and a temperature slider.
   domain: automation
   input:
     mode_off:
-      name: Pulsante OFF
-      description: Pulsante per impostare il riscaldamento su OFF.
+      name: OFF Mode Button
+      description: Button to set heating to OFF.
       selector:
         entity:
           domain: input_boolean
     mode_electric:
-      name: Pulsante ELETTRICO
-      description: Pulsante per impostare il riscaldamento in modalità elettrico.
+      name: ELECTRIC Mode Button
+      description: Button to set heating to ELECTRIC mode.
       selector:
         entity:
           domain: input_boolean
     mode_gas:
-      name: Pulsante GAS
-      description: Pulsante per impostare il riscaldamento in modalità gas.
+      name: GAS Mode Button
+      description: Button to set heating to GAS mode.
       selector:
         entity:
           domain: input_boolean
     mode_electric_gas:
-      name: Pulsante ELETTRICO+GAS
-      description: Pulsante per impostare il riscaldamento in modalità elettrico+gas.
+      name: ELECTRIC+GAS Mode Button
+      description: Button to set heating to ELECTRIC+GAS mode.
       selector:
         entity:
           domain: input_boolean
     heater:
-      name: Heater smart (elettrico)
-      description: Dispositivo per lo heater elettrico.
+      name: Smart Heater (ELECTRIC)
+      description: Switch entity for the smart heater.
       selector:
         entity:
           domain: switch
     temperature_sensor:
-      name: Sensore di temperatura
-      description: Sensore di temperatura per la stanza.
+      name: Temperature Sensor
+      description: Temperature sensor for the room.
       selector:
         entity:
           domain: sensor
     valve:
-      name: Valvola smart (gas)
-      description: Valvola smart per il controllo del gas.
+      name: Smart Valve (GAS)
+      description: Climate entity for the smart valve.
       selector:
         entity:
           domain: climate
-    desired_temperature:
-      name: Temperatura desiderata
-      description: Temperatura desiderata per la stanza.
+    desired_temperature_entity:
+      name: Desired Temperature Slider
+      description: Numeric entity (slider) providing the desired room temperature.
       selector:
-        number:
-          min: 10
-          max: 30
-          step: 0.5
-          unit_of_measurement: "°C"
+        entity:
+          domain: input_number
     valve_off_temperature:
-      name: Temperatura valvola quando OFF/ELETTRICO
-      description: Temperatura impostata sulla valvola in modalità OFF o ELETTRICO.
+      name: Valve Temperature When OFF/ELECTRIC
+      description: Temperature to set the valve when in OFF or ELECTRIC mode.
       selector:
         number:
           min: 5
@@ -75,6 +72,8 @@ trigger:
     entity_id: !input mode_electric_gas
   - platform: state
     entity_id: !input temperature_sensor
+  - platform: state
+    entity_id: !input desired_temperature_entity
 
 variables:
   mode_off: !input mode_off
@@ -84,7 +83,7 @@ variables:
   heater: !input heater
   temperature_sensor: !input temperature_sensor
   valve: !input valve
-  desired_temperature: !input desired_temperature
+  desired_temperature: "{{ states(!input desired_temperature_entity) | float(20) }}"
   valve_off_temperature: !input valve_off_temperature
 
 action:
@@ -116,7 +115,7 @@ action:
               - conditions:
                   - condition: numeric_state
                     entity_id: !input temperature_sensor
-                    below: !input desired_temperature
+                    below: "{{ desired_temperature }}"
                 sequence:
                   - service: switch.turn_on
                     target:
@@ -124,7 +123,7 @@ action:
               - conditions:
                   - condition: numeric_state
                     entity_id: !input temperature_sensor
-                    above: !input desired_temperature
+                    above: "{{ desired_temperature }}"
                 sequence:
                   - service: switch.turn_off
                     target:
@@ -141,7 +140,7 @@ action:
             target:
               entity_id: !input valve
             data:
-              temperature: !input desired_temperature
+              temperature: "{{ desired_temperature }}"
       - conditions:
           - condition: state
             entity_id: !input mode_electric_gas
@@ -151,7 +150,7 @@ action:
               - conditions:
                   - condition: numeric_state
                     entity_id: !input temperature_sensor
-                    below: !input desired_temperature
+                    below: "{{ desired_temperature }}"
                 sequence:
                   - service: switch.turn_on
                     target:
@@ -159,7 +158,7 @@ action:
               - conditions:
                   - condition: numeric_state
                     entity_id: !input temperature_sensor
-                    above: !input desired_temperature
+                    above: "{{ desired_temperature }}"
                 sequence:
                   - service: switch.turn_off
                     target:
@@ -168,5 +167,5 @@ action:
             target:
               entity_id: !input valve
             data:
-              temperature: !input desired_temperature
+              temperature: "{{ desired_temperature }}"
 default: []
