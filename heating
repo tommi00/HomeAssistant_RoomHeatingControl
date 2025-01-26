@@ -1,0 +1,172 @@
+blueprint:
+  name: Controllo riscaldamento stanza
+  description: Controlla il riscaldamento in una stanza (OFF, ELETTRICO, GAS, ELETTRICO+GAS).
+  domain: automation
+  input:
+    mode_off:
+      name: Pulsante OFF
+      description: Pulsante per impostare il riscaldamento su OFF.
+      selector:
+        entity:
+          domain: input_boolean
+    mode_electric:
+      name: Pulsante ELETTRICO
+      description: Pulsante per impostare il riscaldamento in modalità elettrico.
+      selector:
+        entity:
+          domain: input_boolean
+    mode_gas:
+      name: Pulsante GAS
+      description: Pulsante per impostare il riscaldamento in modalità gas.
+      selector:
+        entity:
+          domain: input_boolean
+    mode_electric_gas:
+      name: Pulsante ELETTRICO+GAS
+      description: Pulsante per impostare il riscaldamento in modalità elettrico+gas.
+      selector:
+        entity:
+          domain: input_boolean
+    heater:
+      name: Heater smart (elettrico)
+      description: Dispositivo per lo heater elettrico.
+      selector:
+        entity:
+          domain: switch
+    temperature_sensor:
+      name: Sensore di temperatura
+      description: Sensore di temperatura per la stanza.
+      selector:
+        entity:
+          domain: sensor
+    valve:
+      name: Valvola smart (gas)
+      description: Valvola smart per il controllo del gas.
+      selector:
+        entity:
+          domain: climate
+    desired_temperature:
+      name: Temperatura desiderata
+      description: Temperatura desiderata per la stanza.
+      selector:
+        number:
+          min: 10
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+    valve_off_temperature:
+      name: Temperatura valvola quando OFF/ELETTRICO
+      description: Temperatura impostata sulla valvola in modalità OFF o ELETTRICO.
+      selector:
+        number:
+          min: 5
+          max: 20
+          step: 0.5
+          unit_of_measurement: "°C"
+
+trigger:
+  - platform: state
+    entity_id: !input mode_off
+  - platform: state
+    entity_id: !input mode_electric
+  - platform: state
+    entity_id: !input mode_gas
+  - platform: state
+    entity_id: !input mode_electric_gas
+  - platform: state
+    entity_id: !input temperature_sensor
+
+variables:
+  mode_off: !input mode_off
+  mode_electric: !input mode_electric
+  mode_gas: !input mode_gas
+  mode_electric_gas: !input mode_electric_gas
+  heater: !input heater
+  temperature_sensor: !input temperature_sensor
+  valve: !input valve
+  desired_temperature: !input desired_temperature
+  valve_off_temperature: !input valve_off_temperature
+
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input mode_off
+            state: "on"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input heater
+          - service: climate.set_temperature
+            target:
+              entity_id: !input valve
+            data:
+              temperature: !input valve_off_temperature
+      - conditions:
+          - condition: state
+            entity_id: !input mode_electric
+            state: "on"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: !input valve
+            data:
+              temperature: !input valve_off_temperature
+          - choose:
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: !input temperature_sensor
+                    below: !input desired_temperature
+                sequence:
+                  - service: switch.turn_on
+                    target:
+                      entity_id: !input heater
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: !input temperature_sensor
+                    above: !input desired_temperature
+                sequence:
+                  - service: switch.turn_off
+                    target:
+                      entity_id: !input heater
+      - conditions:
+          - condition: state
+            entity_id: !input mode_gas
+            state: "on"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input heater
+          - service: climate.set_temperature
+            target:
+              entity_id: !input valve
+            data:
+              temperature: !input desired_temperature
+      - conditions:
+          - condition: state
+            entity_id: !input mode_electric_gas
+            state: "on"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: !input temperature_sensor
+                    below: !input desired_temperature
+                sequence:
+                  - service: switch.turn_on
+                    target:
+                      entity_id: !input heater
+              - conditions:
+                  - condition: numeric_state
+                    entity_id: !input temperature_sensor
+                    above: !input desired_temperature
+                sequence:
+                  - service: switch.turn_off
+                    target:
+                      entity_id: !input heater
+          - service: climate.set_temperature
+            target:
+              entity_id: !input valve
+            data:
+              temperature: !input desired_temperature
+default: []
