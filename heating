@@ -169,4 +169,3 @@ action:
               entity_id: !input valve
             data:
               temperature: "{{ desired_temperature }}"
-default: []
